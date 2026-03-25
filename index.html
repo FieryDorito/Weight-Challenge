@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Isaac & Ximena | Weight Loss Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: linear-gradient(145deg, #f0f4f8 0%, #d9e2ec 100%);
+            --card: #ffffff;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            --text-primary: #0f2c3b;
+            --text-secondary: #2c3e4e;
+            --text-muted: #5a6e7c;
+            --text-heading: #1e4663;
+            --text-name: linear-gradient(120deg, #2c5a6e, #1f3b4c);
+            --border: #e2edf2;
+            --border-light: #e9edf2;
+            --th-color: #3b6e8b;
+            --th-border: #cbdbe2;
+            --input-bg: #fefefe;
+            --input-border: #cbd5e1;
+            --badge-bg: #eef2f7;
+            --badge-color: #2c5a6e;
+            --chart-bg: #fafdff;
+            --btn-primary: #2c5a6e;
+            --btn-primary-hover: #1e4458;
+            --sync-ok-bg: #e2f0e8;
+            --sync-ok-color: #2a7a50;
+            --sync-warn-bg: #fff3cd;
+            --sync-warn-color: #856404;
+            --sync-err-bg: #ffe1de;
+            --sync-err-color: #c23b22;
+            --hero-grad: linear-gradient(135deg, #1f3b4c, #2c5a6e);
+        }
+
+        [data-theme="dark"] {
+            --bg: linear-gradient(145deg, #0f1a22 0%, #162533 100%);
+            --card: #1b2d3a;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            --text-primary: #e2edf5;
+            --text-secondary: #b0c4d4;
+            --text-muted: #7a99ae;
+            --text-heading: #7ec8e3;
+            --text-name: linear-gradient(120deg, #7ec8e3, #a8d8ea);
+            --border: #2a4355;
+            --border-light: #243545;
+            --th-color: #7ec8e3;
+            --th-border: #2a4355;
+            --input-bg: #14232e;
+            --input-border: #2a4355;
+            --badge-bg: #1e3445;
+            --badge-color: #7ec8e3;
+            --chart-bg: #162533;
+            --btn-primary: #2c6e8a;
+            --btn-primary-hover: #1e5570;
+            --sync-ok-bg: #1a3d2b;
+            --sync-ok-color: #5ecb95;
+            --sync-warn-bg: #3d3010;
+            --sync-warn-color: #f0c040;
+            --sync-err-bg: #3d1a16;
+            --sync-err-color: #f08070;
+            --hero-grad: linear-gradient(135deg, #7ec8e3, #a8d8ea);
+        }
+
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif; }
+
+        body {
+            background: var(--bg);
+            margin: 0;
+            padding: 24px 20px;
+            transition: background 0.3s;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* Dark mode toggle */
+        .topbar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+        .toggle-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: color 0.3s;
+        }
+        .toggle-switch { position: relative; width: 46px; height: 26px; cursor: pointer; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--btn-primary);
+            border-radius: 26px;
+            transition: background 0.3s;
+        }
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            width: 20px; height: 20px;
+            left: 3px; top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        /* Hero */
+        .hero { text-align: center; margin-bottom: 28px; }
+        .hero h1 {
+            font-size: 2.2rem;
+            background: var(--hero-grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0 0 6px 0;
+        }
+        .hero p { color: var(--text-secondary); font-weight: 500; margin: 0; transition: color 0.3s; }
+
+        .sync-status {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--sync-ok-bg);
+            color: var(--sync-ok-color);
+            transition: all 0.3s;
+        }
+        .sync-status.syncing { background: var(--sync-warn-bg); color: var(--sync-warn-color); }
+        .sync-status.error   { background: var(--sync-err-bg);  color: var(--sync-err-color); }
+
+        /* Dashboard */
+        .dashboard { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 32px; }
+        .stats-card {
+            flex: 1;
+            min-width: 170px;
+            background: var(--card);
+            border-radius: 32px;
+            padding: 1.2rem 1rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s, background 0.3s, box-shadow 0.3s;
+            text-align: center;
+        }
+        .stats-card:hover { transform: translateY(-4px); }
+        .stats-card h3 { margin: 0 0 8px 0; font-weight: 600; color: var(--text-heading); font-size: 1rem; transition: color 0.3s; }
+        .stats-value { font-size: 1.8rem; font-weight: 800; color: var(--text-primary); transition: color 0.3s; }
+        .stats-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; transition: color 0.3s; }
+
+        /* Person cards */
+        .tracker-panel { display: flex; flex-wrap: wrap; gap: 28px; margin-bottom: 32px; }
+        .person-card {
+            flex: 1;
+            background: var(--card);
+            border-radius: 36px;
+            box-shadow: 0 18px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+            padding: 1.2rem 1.2rem 1.5rem;
+            transition: background 0.3s;
+        }
+        .person-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 8px;
+            transition: border-color 0.3s;
+        }
+        .person-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: var(--text-name);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .goal-badge {
+            background: var(--badge-bg);
+            border-radius: 60px;
+            padding: 4px 14px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--badge-color);
+            transition: all 0.3s;
+        }
+
+        /* Table */
+        .entry-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .entry-table th {
+            text-align: left;
+            padding: 10px 6px 6px 0;
+            font-weight: 600;
+            color: var(--th-color);
+            border-bottom: 1px solid var(--th-border);
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .entry-table td {
+            padding: 8px 6px 8px 0;
+            border-bottom: 1px solid var(--border-light);
+            font-weight: 500;
+            color: var(--text-primary);
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .weight-cell { font-weight: 700; }
+
+        .percent-change { font-weight: 600; border-radius: 20px; padding: 2px 8px; display: inline-block; }
+        .positive-change { background: #ffe1de; color: #c23b22; }
+        .negative-change { background: #dff6f0; color: #1f6e58; }
+        .neutral-change  { background: #eef2f5; color: #5c6f87; }
+        [data-theme="dark"] .positive-change { background: #4a1a14; color: #f08070; }
+        [data-theme="dark"] .negative-change { background: #0e3328; color: #5ecb95; }
+        [data-theme="dark"] .neutral-change  { background: #1e3040; color: #90aabe; }
+
+        .delete-row-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 2px 6px;
+            border-radius: 8px;
+            opacity: 0.5;
+            transition: opacity 0.2s, background 0.2s;
+        }
+        .delete-row-btn:hover { opacity: 1; background: #ffe1de; }
+        [data-theme="dark"] .delete-row-btn:hover { background: #4a1a14; }
+
+        /* Add row */
+        .add-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+        .add-row input {
+            flex: 2;
+            padding: 10px 12px;
+            border-radius: 40px;
+            border: 1px solid var(--input-border);
+            font-size: 0.9rem;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: background 0.3s, border 0.3s, color 0.3s;
+        }
+        .add-row button {
+            background: var(--btn-primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .add-row button:hover { background: var(--btn-primary-hover); transform: scale(0.97); }
+
+        .footer-note { text-align: center; font-size: 0.75rem; margin-top: 12px; color: var(--text-muted); transition: color 0.3s; }
+
+        /* Charts */
+        .graph-section {
+            background: var(--card);
+            border-radius: 32px;
+            padding: 1.2rem;
+            margin-top: 20px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+            transition: background 0.3s;
+        }
+        .graph-title { font-weight: 700; font-size: 1.3rem; margin-bottom: 16px; color: var(--text-heading); padding-left: 10px; transition: color 0.3s; }
+        .charts-flex { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+        .chart-box {
+            flex: 1;
+            min-width: 280px;
+            background: var(--chart-bg);
+            border-radius: 28px;
+            padding: 12px;
+            transition: background 0.3s;
+        }
+        .chart-label { color: var(--text-secondary); margin-top: 6px; text-align: center; font-weight: 500; transition: color 0.3s; }
+        canvas { max-height: 280px; width: 100%; }
+
+        @media (max-width: 720px) {
+            .person-name { font-size: 1.4rem; }
+            .stats-value  { font-size: 1.4rem; }
+            .add-row input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="topbar">
+        <span class="toggle-label" id="themeLabel">🌙 Dark mode</span>
+        <label class="toggle-switch">
+            <input type="checkbox" id="themeToggle" />
+            <span class="toggle-slider"></span>
+        </label>
+    </div>
+
+    <div class="hero">
+        <h1>🏆 Isaac & Ximena Transform 🏆</h1>
+        <p>Daily / Weekly weight tracker • percentage changes • color coded • goals & projections</p>
+        <span class="sync-status syncing" id="syncStatus">⏳ Connecting...</span>
+    </div>
+
+    <div class="dashboard">
+        <div class="stats-card"><h3>🔥 Isaac lost</h3><div class="stats-value" id="totalLostMe">—</div><div class="stats-sub">from start</div></div>
+        <div class="stats-card"><h3>🌸 Ximena lost</h3><div class="stats-value" id="totalLostHer">—</div><div class="stats-sub">from start</div></div>
+        <div class="stats-card"><h3>🎯 Isaac's days to goal</h3><div class="stats-value" id="daysToGoalMe">—</div><div class="stats-sub">based on recent trend</div></div>
+        <div class="stats-card"><h3>🎯 Ximena's days to goal</h3><div class="stats-value" id="daysToGoalHer">—</div><div class="stats-sub">based on recent trend</div></div>
+    </div>
+
+    <div class="tracker-panel">
+        <!-- ISAAC -->
+        <div class="person-card">
+            <div class="person-header">
+                <span class="person-name">🔥 Isaac</span>
+                <span class="goal-badge">🎯 Goal: 220 lbs</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="entry-table">
+                    <thead><tr><th>Date</th><th>Weight (lbs)</th><th>Δ vs previous</th><th>Total % from start</th><th></th></tr></thead>
+                    <tbody id="meTableBody"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
+                </table>
+            </div>
+            <div class="add-row">
+                <input type="date" id="meDateInput" />
+                <input type="number" id="meWeightInput" step="0.1" placeholder="Weight (lbs)" />
+                <button id="addMeEntry">➕ Add entry</button>
+            </div>
+            <div class="footer-note">✅ <span style="background:#dff6f0; padding:2px 8px; border-radius:4px;">Green = loss ↓</span> &nbsp; <span style="background:#ffe1de; padding:2px 8px; border-radius:4px;">Red = gain ↑</span></div>
+        </div>
+
+        <!-- XIMENA -->
+        <div class="person-card">
+            <div class="person-header">
+                <span class="person-name">🌸 Ximena</span>
+                <span class="goal-badge">🎯 Goal: 135 lbs</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="entry-table">
+                    <thead><tr><th>Date</th><th>Weight (lbs)</th><th>Δ vs previous</th><th>Total % from start</th><th></th></tr></thead>
+                    <tbody id="herTableBody"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
+                </table>
+            </div>
+            <div class="add-row">
+                <input type="date" id="herDateInput" />
+                <input type="number" id="herWeightInput" step="0.1" placeholder="Weight (lbs)" />
+                <button id="addHerEntry">➕ Add entry</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="graph-section">
+        <div class="graph-title">📈 Progress Visuals (weight & % from start)</div>
+        <div class="charts-flex">
+            <div class="chart-box"><canvas id="meWeightChart"></canvas><div class="chart-label">Isaac's weight trend</div></div>
+            <div class="chart-box"><canvas id="herWeightChart"></canvas><div class="chart-label">Ximena's weight trend</div></div>
+        </div>
+        <div class="charts-flex" style="margin-top:20px;">
+            <div class="chart-box"><canvas id="mePctChart"></canvas><div class="chart-label">Isaac's % lost from start</div></div>
+            <div class="chart-box"><canvas id="herPctChart"></canvas><div class="chart-label">Ximena's % lost from start</div></div>
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDG3OLOHaniHVh3UKtf3od5EsbFwYcUsy8",
+        authDomain: "weight-tracker-e0667.firebaseapp.com",
+        projectId: "weight-tracker-e0667",
+        storageBucket: "weight-tracker-e0667.firebasestorage.app",
+        messagingSenderId: "846051035713",
+        appId: "1:846051035713:web:f89ced49c0f03d195d94c0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const START_ME  = 340, GOAL_ME  = 220;
+    const START_HER = 174, GOAL_HER = 135;
+
+    let meEntries  = [];
+    let herEntries = [];
+
+    // ── Dark mode ────────────────────────────────────────────────
+    const toggle = document.getElementById("themeToggle");
+    const label  = document.getElementById("themeLabel");
+    const saved  = localStorage.getItem("theme") || "light";
+    if (saved === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        toggle.checked = true;
+        label.textContent = "☀️ Light mode";
+    }
+    toggle.addEventListener("change", () => {
+        const isDark = toggle.checked;
+        document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        label.textContent = isDark ? "☀️ Light mode" : "🌙 Dark mode";
+        updateCharts();
+    });
+
+    // ── Sync status ──────────────────────────────────────────────
+    const syncEl = document.getElementById("syncStatus");
+    function setSync(state, msg) {
+        syncEl.className = "sync-status" + (state !== "ok" ? " " + state : "");
+        syncEl.innerText = msg;
+    }
+
+    // ── Firestore ────────────────────────────────────────────────
+    async function saveToFirestore(person, entries) {
+        setSync("syncing", "☁️ Saving...");
+        try {
+            await setDoc(doc(db, "weightTracker", person), { entries });
+            setSync("ok", "✅ Synced");
+        } catch(e) {
+            setSync("error", "❌ Sync failed");
+            console.error(e);
+        }
+    }
+
+    function startListeners() {
+        onSnapshot(doc(db, "weightTracker", "me"), (snap) => {
+            if (snap.exists()) {
+                meEntries = snap.data().entries || [];
+                meEntries.sort((a,b) => new Date(a.date) - new Date(b.date));
+            } else {
+                meEntries = [{ date: getTodayStr(), weight: START_ME }];
+                saveToFirestore("me", meEntries);
+            }
+            renderAll();
+            setSync("ok", "✅ Synced");
+        }, () => setSync("error", "❌ Connection error"));
+
+        onSnapshot(doc(db, "weightTracker", "her"), (snap) => {
+            if (snap.exists()) {
+                herEntries = snap.data().entries || [];
+                herEntries.sort((a,b) => new Date(a.date) - new Date(b.date));
+            } else {
+                herEntries = [{ date: getTodayStr(), weight: START_HER }];
+                saveToFirestore("her", herEntries);
+            }
+            renderAll();
+            setSync("ok", "✅ Synced");
+        }, () => setSync("error", "❌ Connection error"));
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function getTodayStr() { return new Date().toISOString().slice(0,10); }
+
+    function addEntry(person, date, weight) {
+        if (!date || isNaN(weight) || weight <= 0) return false;
+        const entries = person === "me" ? meEntries : herEntries;
+        const newEntry = { date, weight: parseFloat(weight) };
+        const idx = entries.findIndex(e => e.date === date);
+        if (idx !== -1) entries[idx] = newEntry; else entries.push(newEntry);
+        entries.sort((a,b) => new Date(a.date) - new Date(b.date));
+        if (person === "me") meEntries = entries; else herEntries = entries;
+        saveToFirestore(person, entries);
+        return true;
+    }
+
+    function deleteEntry(person, date) {
+        if (!confirm(`Delete entry for ${date}?`)) return;
+        const entries = (person === "me" ? meEntries : herEntries).filter(e => e.date !== date);
+        if (person === "me") meEntries = entries; else herEntries = entries;
+        saveToFirestore(person, entries);
+    }
+
+    function getPctChange(entries, idx) {
+        if (idx === 0) return null;
+        return ((entries[idx].weight - entries[idx-1].weight) / entries[idx-1].weight) * 100;
+    }
+    function getTotalPct(entries, idx) {
+        return ((entries[idx].weight - entries[0].weight) / entries[0].weight) * 100;
+    }
+
+    // ── Render ───────────────────────────────────────────────────
+    function renderTable(bodyId, entries, person) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+        body.innerHTML = "";
+        if (entries.length === 0) {
+            body.innerHTML = `<tr><td colspan="5" style="text-align:center;">No entries yet</td></tr>`;
+            return;
+        }
+        entries.forEach((entry, idx) => {
+            const row = body.insertRow();
+            row.insertCell(0).innerText = entry.date;
+            const wCell = row.insertCell(1);
+            wCell.innerText = entry.weight.toFixed(1);
+            wCell.className = "weight-cell";
+
+            const dCell = row.insertCell(2);
+            const pct = getPctChange(entries, idx);
+            if (pct !== null) {
+                const absDelta = (entry.weight - entries[idx-1].weight).toFixed(1);
+                const sign = pct > 0 ? "+" : "";
+                const cls  = pct > 0 ? "positive-change" : pct < 0 ? "negative-change" : "neutral-change";
+                dCell.innerHTML = `<span class="percent-change ${cls}">${sign}${pct.toFixed(2)}% (${absDelta} lbs)</span>`;
+            } else { dCell.innerText = "—"; }
+
+            const tCell = row.insertCell(3);
+            const total = getTotalPct(entries, idx);
+            const tcls  = total > 0 ? "positive-change" : total < 0 ? "negative-change" : "neutral-change";
+            tCell.innerHTML = `<span class="percent-change ${tcls}">${total > 0 ? "+" : ""}${total.toFixed(2)}%</span>`;
+
+            const delCell = row.insertCell(4);
+            if (idx > 0) {
+                const btn = document.createElement("button");
+                btn.className = "delete-row-btn";
+                btn.title = "Delete this entry";
+                btn.innerText = "🗑️";
+                btn.addEventListener("click", () => deleteEntry(person, entry.date));
+                delCell.appendChild(btn);
+            }
+        });
+    }
+
+    function updateStats() {
+        const startMe  = meEntries[0]?.weight  || START_ME;
+        const currMe   = meEntries[meEntries.length-1]?.weight  || START_ME;
+        const startHer = herEntries[0]?.weight || START_HER;
+        const currHer  = herEntries[herEntries.length-1]?.weight || START_HER;
+
+        document.getElementById("totalLostMe").innerText  = `${(startMe  - currMe).toFixed(1)} lbs`;
+        document.getElementById("totalLostHer").innerText = `${(startHer - currHer).toFixed(1)} lbs`;
+
+        function calcDays(entries, goal) {
+            if (entries.length < 2) return null;
+            const last = entries[entries.length-1];
+            const ref  = entries[Math.max(0, entries.length-3)];
+            const daysDiff = (new Date(last.date) - new Date(ref.date)) / 86400000;
+            if (daysDiff <= 0) return null;
+            const rate = (ref.weight - last.weight) / daysDiff;
+            if (rate <= 0.01) return null;
+            const rem = last.weight - goal;
+            return rem <= 0 ? 0 : Math.round(rem / rate);
+        }
+
+        const mD = calcDays(meEntries,  GOAL_ME);
+        const hD = calcDays(herEntries, GOAL_HER);
+        document.getElementById("daysToGoalMe").innerHTML  = mD === null ? "need more data" : mD === 0 ? "🎉 Goal!" : `${mD} days`;
+        document.getElementById("daysToGoalHer").innerHTML = hD === null ? "need more data" : hD === 0 ? "🎉 Goal!" : `${hD} days`;
+    }
+
+    // ── Charts ───────────────────────────────────────────────────
+    let meWeightChart, herWeightChart, mePctChart, herPctChart;
+
+    function getChartOpts() {
+        const dark = document.documentElement.getAttribute("data-theme") === "dark";
+        const grid = dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+        const tick = dark ? "#7a99ae" : "#5a6e7c";
+        return {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: grid }, ticks: { color: tick } },
+                y: { grid: { color: grid }, ticks: { color: tick } }
+            }
+        };
+    }
+
+    function initCharts() {
+        const opts = getChartOpts();
+        meWeightChart  = new Chart(document.getElementById("meWeightChart"),  { type:"line", data:{labels:[],datasets:[]}, options: JSON.parse(JSON.stringify(opts)) });
+        herWeightChart = new Chart(document.getElementById("herWeightChart"), { type:"line", data:{labels:[],datasets:[]}, options: JSON.parse(JSON.stringify(opts)) });
+        mePctChart     = new Chart(document.getElementById("mePctChart"),     { type:"line", data:{labels:[],datasets:[]}, options: JSON.parse(JSON.stringify(opts)) });
+        herPctChart    = new Chart(document.getElementById("herPctChart"),    { type:"line", data:{labels:[],datasets:[]}, options: JSON.parse(JSON.stringify(opts)) });
+    }
+
+    function updateCharts() {
+        const opts = getChartOpts();
+        const meL  = meEntries.map(e => e.date.slice(5));
+        const herL = herEntries.map(e => e.date.slice(5));
+
+        meWeightChart.data  = { labels: meL,  datasets:[{ data: meEntries.map(e=>e.weight),                       borderColor:"#2c5a6e", backgroundColor:"rgba(44,90,110,0.1)",   tension:0.2, fill:true }] };
+        herWeightChart.data = { labels: herL, datasets:[{ data: herEntries.map(e=>e.weight),                      borderColor:"#b16e5c", backgroundColor:"rgba(177,110,92,0.1)",  tension:0.2, fill:true }] };
+        mePctChart.data     = { labels: meL,  datasets:[{ data: meEntries.map((_,i)=>getTotalPct(meEntries,i)),   borderColor:"#2b9b7a", backgroundColor:"rgba(43,155,122,0.1)",  tension:0.2, fill:true }] };
+        herPctChart.data    = { labels: herL, datasets:[{ data: herEntries.map((_,i)=>getTotalPct(herEntries,i)), borderColor:"#e26d5c", backgroundColor:"rgba(226,109,92,0.1)",  tension:0.2, fill:true }] };
+
+        [meWeightChart, herWeightChart, mePctChart, herPctChart].forEach(c => {
+            Object.assign(c.options, opts);
+            c.update();
+        });
+    }
+
+    function renderAll() {
+        renderTable("meTableBody",  meEntries,  "me");
+        renderTable("herTableBody", herEntries, "her");
+        updateStats();
+        updateCharts();
+    }
+
+    // ── Events ───────────────────────────────────────────────────
+    function bindEvents() {
+        document.getElementById("meDateInput").value  = getTodayStr();
+        document.getElementById("herDateInput").value = getTodayStr();
+
+        document.getElementById("addMeEntry").addEventListener("click", () => {
+            const date   = document.getElementById("meDateInput").value || getTodayStr();
+            const weight = parseFloat(document.getElementById("meWeightInput").value);
+            if (isNaN(weight) || weight <= 0) { alert("Enter a valid weight (lbs)"); return; }
+            addEntry("me", date, weight);
+            document.getElementById("meWeightInput").value = "";
+            document.getElementById("meDateInput").value   = getTodayStr();
+        });
+
+        document.getElementById("addHerEntry").addEventListener("click", () => {
+            const date   = document.getElementById("herDateInput").value || getTodayStr();
+            const weight = parseFloat(document.getElementById("herWeightInput").value);
+            if (isNaN(weight) || weight <= 0) { alert("Enter a valid weight (lbs)"); return; }
+            addEntry("her", date, weight);
+            document.getElementById("herWeightInput").value = "";
+            document.getElementById("herDateInput").value   = getTodayStr();
+        });
+    }
+
+    // ── Boot ─────────────────────────────────────────────────────
+    initCharts();
+    bindEvents();
+    startListeners();
+</script>
+</body>
+</html>
